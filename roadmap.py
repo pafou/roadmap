@@ -4,7 +4,7 @@ from pptx.util import Cm, Pt
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_PARAGRAPH_ALIGNMENT
 from pptx.enum.shapes import MSO_AUTO_SHAPE_TYPE
-from styles_config import THEME_STYLING, TASK_STYLING, COLOR_MAPPING, BAR_TYPE_COLORS, MILESTONE_STYLES, MILESTONE_TEXT_STYLE
+from styles_config import THEME_STYLING, TASK_STYLING, COLOR_MAPPING, BAR_TYPE_COLORS, MILESTONE_STYLES, MILESTONE_TEXT_STYLE, TITLE_STYLE
 
 # --- Chargement du JSON ---
 with open("data/roadmap.json", "r", encoding="utf-8") as file:
@@ -13,6 +13,34 @@ with open("data/roadmap.json", "r", encoding="utf-8") as file:
 # --- Template PowerPoint ---
 prs = Presentation("data/Roadmap_template.pptx")
 slide = prs.slides[0]
+
+# --- Add title at the top of the page ---
+# Check if title exists in roadmap data
+if "title" in roadmap_data and roadmap_data["title"]:
+    # Add title shape at the top (0.5cm from top, centered horizontally)
+    title_shape = slide.shapes.add_shape(
+        1,  # rectangle shape for the title
+        Cm(0), Cm(0),  # Centered horizontally (5cm from left), 0.5cm from top
+        Cm(10), Cm(1)  # 10cm wide, 1cm high
+    )
+
+    # No background (transparent) and no border for title
+    title_shape.fill.background()  # Transparent background
+    title_shape.line.color.rgb = RGBColor(255, 255, 255)  # White border (invisible)
+    title_shape.line.width = Pt(0)  # No border width
+    title_shape.line.fill.background()  # Ensure line has no fill
+
+    # Add text to the title shape (convert to uppercase)
+    tf = title_shape.text_frame
+    tf.text = roadmap_data["title"].upper()
+
+    # Apply title styling
+    for paragraph in tf.paragraphs:
+        paragraph.font.name = TITLE_STYLE['font_name']
+        paragraph.font.size = Pt(TITLE_STYLE['font_size'])
+        paragraph.font.bold = TITLE_STYLE['font_bold']
+        paragraph.font.color.rgb = RGBColor(*TITLE_STYLE['font_color'])
+        paragraph.alignment = PP_PARAGRAPH_ALIGNMENT.CENTER  # Center alignment
 
 # --- Mapping mois → colonne ---
 MOIS_INDEX = {
@@ -199,8 +227,8 @@ for theme_data in roadmap_data["themes"]:
             # Create a rectangle shape for milestone (text in rectangle, 0.3cm high, no background/border)
             shape = slide.shapes.add_shape(
                 1,  # rectangle
-                x + Cm(1.6), y,  # End of the column
-                Cm(3), Cm(0.3)  # 2cm wide, 0.3cm high as requested
+                x + Cm(1.4), y,  # End of the column
+                Cm(3), Cm(0.3)  # 3cm wide, 0.3cm high as requested
             )
 
             # No background (transparent) and no border as requested
