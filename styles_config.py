@@ -64,3 +64,11 @@ MILESTONE_TEXT_STYLE = {
     'font_size': 6,
     'font_color': (0x32, 0x4B, 0x6B)  # Hex color #324B6B
 }
+
+# Title styling configuration
+TITLE_STYLE = {
+    'font_name': 'Arial',
+    'font_size': 16,
+    'font_bold': True,
+    'font_color': (0x32, 0x4B, 0x6B)  # Hex color #324B6B
+}
