@@ -1,0 +1,128 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Roadmap JSON Schema",
+  "description": "Schema for validating the roadmap JSON structure and month formats",
+  "type": "object",
+  "properties": {
+    "themes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "properties": {
+                "line": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "minItems": 1,
+                      "items": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "const": "bar"
+                              },
+                              "subtype": {
+                                "type": "string",
+                                "enum": ["S", "ER", "DDO", "SL"]
+                              },
+                              "label": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "start": {
+                                "type": "string",
+                                "enum": ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Aoû", "Sep", "Oct", "Nov", "Déc"]
+                              },
+                              "end": {
+                                "type": "string",
+                                "enum": ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Aoû", "Sep", "Oct", "Nov", "Déc"]
+                              },
+                              "year": {
+                                "type": "integer",
+                                "minimum": 2000,
+                                "maximum": 2100
+                              }
+                            },
+                            "required": ["type", "label", "start", "end", "year"],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "const": "milestone"
+                              },
+                              "label": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "month": {
+                                "type": "string",
+                                "enum": ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Aoû", "Sep", "Oct", "Nov", "Déc"]
+                              },
+                              "year": {
+                                "type": "integer",
+                                "minimum": 2000,
+                                "maximum": 2100
+                              },
+                              "style": {
+                                "type": "string",
+                                "enum": ["default", "ddo"]
+                              }
+                            },
+                            "required": ["type", "label", "month", "year"],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "const": "text"
+                              },
+                              "label": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "year": {
+                                "type": "integer",
+                                "minimum": 2000,
+                                "maximum": 2100
+                              }
+                            },
+                            "required": ["type", "label", "year"],
+                            "additionalProperties": false
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "required": ["items"],
+                  "additionalProperties": false
+                }
+              },
+              "required": ["line"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["name", "items"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["themes"],
+  "additionalProperties": false
+}

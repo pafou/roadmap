@@ -1,14 +1,14 @@
-import yaml
+import json
 from pptx import Presentation
 from pptx.util import Cm, Pt
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_PARAGRAPH_ALIGNMENT
 from pptx.enum.shapes import MSO_AUTO_SHAPE_TYPE
-from styles_config import THEME_STYLING, TASK_STYLING, COLOR_MAPPING, BAR_TYPE_COLORS, MILESTONE_STYLES
+from styles_config import THEME_STYLING, TASK_STYLING, COLOR_MAPPING, BAR_TYPE_COLORS, MILESTONE_STYLES, MILESTONE_TEXT_STYLE
 
-# --- Chargement du YAML ---
-with open("data/roadmap.yaml", "r", encoding="utf-8") as file:
-    roadmap_data = yaml.safe_load(file)
+# --- Chargement du JSON ---
+with open("data/roadmap.json", "r", encoding="utf-8") as file:
+    roadmap_data = json.load(file)
 
 # --- Template PowerPoint ---
 prs = Presentation("data/Roadmap_template.pptx")
@@ -36,13 +36,9 @@ for theme_data in roadmap_data["themes"]:
     theme_name = theme_data["name"]
     items = theme_data["items"]
 
-    # Count the number of unique lines used in this theme (only for bar and milestone types)
-    lines_used = set()
-    for item in items:
-        if item["type"] in ["bar", "milestone"]:  # Only count bar and milestone types
-            lines_used.add(item["line"])
+    # Count the number of lines (each line object represents one line)
+    num_lines = len(items)
 
-    num_lines = len(lines_used)
     theme_height = Cm(0.3) + Cm(0.6) * num_lines  # 0.3cm title + lines × 0.6cm
 
     theme_heights[theme_name] = theme_height
@@ -52,8 +48,8 @@ for theme_data in roadmap_data["themes"]:
 # Debug: show calculated themes and their heights
 print("Thèmes calculés:", list(THEME_INDEX.keys()))
 for theme_name, height in theme_heights.items():
-    # Count lines properly - only count items that have line numbers
-    num_lines = len(set(item["line"] for item in roadmap_data['themes'][THEME_INDEX[theme_name]]['items'] if 'line' in item))
+    # Count lines - each item in the new structure represents a line
+    num_lines = len(roadmap_data['themes'][THEME_INDEX[theme_name]]['items'])
     # Convert Cm object to actual centimeter value for display
     height_cm = height / 360000  # Convert from EMUs to cm (360000 EMUs = 1 cm)
     print(f"Thème '{theme_name}': {height_cm:.1f} cm ({num_lines} lignes)")
@@ -135,32 +131,35 @@ def get_color_for_type(item_type, subtype=None):
 # --- Génération des shapes ---
 for theme_data in roadmap_data["themes"]:
     theme_name = theme_data["name"]
-    items = theme_data["items"]
+    line_items = theme_data["items"]  # Each item is now a line object
 
-    # Group bars by line to handle consecutive bars on the same line
-    bars_by_line = {}
-    milestones = []
+    # Process each line and its items
+    for line_index, line_item in enumerate(line_items):
+        line_items_data = line_item["line"]["items"]
+        line_number = line_index + 1  # Line numbers start from 1
 
-    for item in items:
-        if item["type"] == "bar":
-            line = item["line"]
-            if line not in bars_by_line:
-                bars_by_line[line] = []
-            bars_by_line[line].append(item)
-        elif item["type"] == "milestone":
-            milestones.append(item)
+        # Separate bars and milestones within this line
+        bars = []
+        milestones = []
 
-    # Draw bars first (grouped by line)
-    for line, bars in bars_by_line.items():
+        for item in line_items_data:
+            if item["type"] == "bar":
+                bars.append(item)
+            elif item["type"] == "milestone":
+                milestones.append(item)
+            elif item["type"] == "text":
+                # Handle text items if needed
+                pass
+
         # Sort bars by start month to ensure proper ordering
         bars.sort(key=lambda x: MOIS_INDEX[x["start"]])
 
-        # Draw consecutive bars on the same line
+        # Draw bars on this line
         for bar in bars:
             start_x = coord_x(bar["start"])
             end_x = coord_x(bar["end"])
             width = end_x - start_x + Cm(2)  # Add full column width
-            y = coord_y(theme_name, line)
+            y = coord_y(theme_name, line_number)
 
             shape = slide.shapes.add_shape(
                 1,  # rectangle
@@ -192,64 +191,65 @@ for theme_data in roadmap_data["themes"]:
                 # Default text color if no specific foreground is defined
                 tf.paragraphs[0].font.color.rgb = RGBColor(*THEME_STYLING['font_color'])
 
-    # Draw milestones
-    for milestone in milestones:
-        x = coord_x(milestone["month"])
-        y = coord_y(theme_name, milestone["line"]) - Cm(0.3)  # Position 0.3cm higher as requested
+        # Draw milestones on this line
+        for milestone in milestones:
+            x = coord_x(milestone["month"])
+            y = coord_y(theme_name, line_number) - Cm(0.3)  # Position 0.3cm higher as requested
 
-        # Create a rectangle shape for milestone (text in rectangle, 0.3cm high, no background/border)
-        shape = slide.shapes.add_shape(
-            1,  # rectangle
-            x + Cm(1.6), y,  # End of the column
-            Cm(2), Cm(0.3)  # 2cm wide, 0.3cm high as requested
-        )
+            # Create a rectangle shape for milestone (text in rectangle, 0.3cm high, no background/border)
+            shape = slide.shapes.add_shape(
+                1,  # rectangle
+                x + Cm(1.6), y,  # End of the column
+                Cm(3), Cm(0.3)  # 2cm wide, 0.3cm high as requested
+            )
 
-        # No background (transparent) and no border as requested
-        shape.fill.background()  # Transparent background
-        shape.line.color.rgb = RGBColor(255, 255, 255)  # White border (invisible)
-        shape.line.width = Pt(0)  # No border width
-        shape.line.fill.background()  # Ensure line has no fill
+            # No background (transparent) and no border as requested
+            shape.fill.background()  # Transparent background
+            shape.line.color.rgb = RGBColor(255, 255, 255)  # White border (invisible)
+            shape.line.width = Pt(0)  # No border width
+            shape.line.fill.background()  # Ensure line has no fill
 
-        # texte
-        tf = shape.text_frame
-        tf.text = milestone["label"]
-        tf.paragraphs[0].font.size = Pt(TASK_STYLING['font_size'])
-        # Set text color to match the milestone color for visibility
-        tf.paragraphs[0].font.color.rgb = RGBColor(*get_color_for_type(milestone["type"]))
-        # Ensure text has no outline or border
-        tf.paragraphs[0].font.outline = False
-        tf.paragraphs[0].font.shadow = False
-        tf.paragraphs[0].font.underline = False
+            # texte
+            tf = shape.text_frame
+            tf.text = milestone["label"]
+            # Apply MILESTONE_TEXT_STYLE
+            tf.paragraphs[0].font.name = MILESTONE_TEXT_STYLE['font_name']
+            tf.paragraphs[0].font.size = Pt(MILESTONE_TEXT_STYLE['font_size'])
+            tf.paragraphs[0].font.color.rgb = RGBColor(*MILESTONE_TEXT_STYLE['font_color'])
+            # Ensure text has no outline or border
+            tf.paragraphs[0].font.outline = False
+            tf.paragraphs[0].font.shadow = False
+            tf.paragraphs[0].font.underline = False
 
-        # Add downward-pointing triangle below the text rectangle
-        # Triangle: 0.3cm height, 0.15cm width, positioned 0.1cm below the text rectangle
-        triangle_y = y + Cm(0.3) + Cm(-0.1)  # 0.1cm below the text rectangle
-        triangle_x = x + Cm(1.6) - Cm(0.075)  # Centered below the text rectangle
+            # Add downward-pointing triangle below the text rectangle
+            # Triangle: 0.3cm height, 0.15cm width, positioned 0.1cm below the text rectangle
+            triangle_y = y + Cm(0.3) + Cm(-0.1)  # 0.1cm below the text rectangle
+            triangle_x = x + Cm(1.6) - Cm(0.075)  # Centered below the text rectangle
 
-        # Create isosceles triangle shape (using proper MSO_AUTO_SHAPE_TYPE constant)
-        triangle_shape = slide.shapes.add_shape(
-            MSO_AUTO_SHAPE_TYPE.ISOSCELES_TRIANGLE,
-            triangle_x, triangle_y,
-            Cm(0.15), Cm(0.3)  # 0.15cm width, 0.3cm height
-        )
+            # Create isosceles triangle shape (using proper MSO_AUTO_SHAPE_TYPE constant)
+            triangle_shape = slide.shapes.add_shape(
+                MSO_AUTO_SHAPE_TYPE.ISOSCELES_TRIANGLE,
+                triangle_x, triangle_y,
+                Cm(0.15), Cm(0.3)  # 0.15cm width, 0.3cm height
+            )
 
-        # Rotate triangle 180 degrees to make it point downward
-        triangle_shape.rotation = 180  # degrees
+            # Rotate triangle 180 degrees to make it point downward
+            triangle_shape.rotation = 180  # degrees
 
-        # Set triangle color based on milestone style
-        milestone_style = milestone.get("style", "default")  # Default to "default" if no style specified
-        if milestone_style in MILESTONE_STYLES:
-            style_config = MILESTONE_STYLES[milestone_style]
-            triangle_shape.fill.solid()
-            triangle_shape.fill.fore_color.rgb = RGBColor(*style_config['triangle_background'])
-            triangle_shape.line.color.rgb = RGBColor(*style_config['triangle_border'])
-            triangle_shape.line.width = Pt(0.5)  # Thin border
-        else:
-            # Fallback to original behavior if style not found
-            triangle_shape.fill.solid()
-            triangle_shape.fill.fore_color.rgb = RGBColor(*get_color_for_type(milestone["type"]))
-            triangle_shape.line.color.rgb = RGBColor(*get_color_for_type(milestone["type"]))
-            triangle_shape.line.width = Pt(0.5)  # Thin border
+            # Set triangle color based on milestone style
+            milestone_style = milestone.get("style", "default")  # Default to "default" if no style specified
+            if milestone_style in MILESTONE_STYLES:
+                style_config = MILESTONE_STYLES[milestone_style]
+                triangle_shape.fill.solid()
+                triangle_shape.fill.fore_color.rgb = RGBColor(*style_config['triangle_background'])
+                triangle_shape.line.color.rgb = RGBColor(*style_config['triangle_border'])
+                triangle_shape.line.width = Pt(0.5)  # Thin border
+            else:
+                # Fallback to original behavior if style not found
+                triangle_shape.fill.solid()
+                triangle_shape.fill.fore_color.rgb = RGBColor(*get_color_for_type(milestone["type"]))
+                triangle_shape.line.color.rgb = RGBColor(*get_color_for_type(milestone["type"]))
+                triangle_shape.line.width = Pt(0.5)  # Thin border
 
 prs.save("data/Roadmap_generee.pptx")
 print("Roadmap générée !")
