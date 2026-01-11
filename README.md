@@ -1,19 +1,20 @@
 # Roadmap Generator
 
-A Python-based roadmap generator that creates professional PowerPoint roadmaps from YAML configuration files.
+A Python-based roadmap generator that creates professional PowerPoint roadmaps from JSON configuration files.
 
 ## 📁 Project Structure
 
 ```
 roadmap/
 ├── data/                  # Data directory (ignored by git)
-│   ├── roadmap.yaml       # YAML configuration file
+│   ├── roadmap*.json      # JSON configuration files
 │   ├── Roadmap_template.pptx  # PowerPoint template
-│   └── Roadmap_generee.pptx  # Generated roadmap output
+│   └── Roadmap_generee*.pptx  # Generated roadmap outputs
 ├── .gitignore             # Git ignore configuration
 ├── README.md              # This file
 ├── roadmap.py             # Main roadmap generation script
-├── yaml_validator.py      # YAML validation tool
+├── roadmap_schema.json    # JSON schema for validation
+├── validate_json.py       # JSON validation tool
 └── styles_config.py       # Styling configuration
 ```
 
@@ -22,11 +23,11 @@ roadmap/
 ### Prerequisites
 
 - Python 3.x
-- Required Python packages: `pypptx`, `pyyaml`
+- Required Python packages: `pypptx`
 
 Install dependencies:
 ```bash
-pip install python-pptx pyyaml
+pip install python-pptx
 ```
 
 ### Setup
@@ -46,52 +47,72 @@ git remote add origin https://github.com/pafou/roadmap.git
 
 ### Generate a Roadmap
 
-1. Edit the YAML configuration file at `data/roadmap.yaml` to define your roadmap structure
+1. Edit the JSON configuration file at `data/roadmap*.json` to define your roadmap structure
 2. Run the main script:
 ```bash
 python roadmap.py
 ```
 
-This will generate a PowerPoint roadmap at `data/Roadmap_generee.pptx` using the template from `data/Roadmap_template.pptx`.
+This will generate PowerPoint roadmaps at `data/Roadmap_generee*.pptx` using the template from `data/Roadmap_template.pptx`.
 
-### Validate YAML Configuration
+### Validate JSON Configuration
 
-To validate your YAML configuration file:
+To validate your JSON configuration file:
 ```bash
-python yaml_validator.py
+python validate_json.py
 ```
 
-For continuous validation (watches for file changes):
-```bash
-python yaml_validator.py --watch
-```
+## 📝 JSON Configuration
 
-## 📝 YAML Configuration
+The `roadmap*.json` file defines the structure of your roadmap with themes and items:
 
-The `roadmap.yaml` file defines the structure of your roadmap with themes and items:
-
-```yaml
-themes:
-  - name: "Theme Name"
-    items:
-      - type: "bar"
-        label: "Project Name"
-        start: "Jan"
-        end: "Mar"
-        line: 1
-        subtype: "optional_subtype"
-      - type: "milestone"
-        label: "Milestone"
-        month: "Jun"
-        line: 2
-        style: "milestone_style"
+```json
+{
+  "$schema": "../roadmap_schema.json",
+  "title": "Roadmap Title",
+  "themes": [
+    {
+      "name": "Theme Name",
+      "items": [
+        {
+          "line": {
+            "items": [
+              {
+                "type": "bar",
+                "subtype": "DDO",
+                "label": "Project Name",
+                "start": "Jan",
+                "end": "Mar",
+                "year": 2026
+              },
+              {
+                "type": "milestone",
+                "label": "Milestone",
+                "month": "Jun",
+                "year": 2026,
+                "style": "ddo"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
 ```
 
 ### Item Types
 
 - **bar**: Horizontal bars representing projects or initiatives
+  - Required fields: `type`, `label`, `start`, `end`, `year`
+  - Optional fields: `subtype` (S, ER, DDO, SL)
+
 - **milestone**: Point-in-time events or milestones
+  - Required fields: `type`, `label`, `month`, `year`
+  - Optional fields: `style` (default, ddo)
+
 - **text**: Text annotations
+  - Required fields: `type`, `label`, `year`
 
 ### Supported Months
 
@@ -110,8 +131,8 @@ Edit `styles_config.py` to customize:
 ## 📁 Data Directory
 
 The `data/` directory contains:
-- Input files (YAML configuration, PowerPoint template)
-- Generated output (Roadmap_generee.pptx)
+- Input files (JSON configuration, PowerPoint template)
+- Generated output (Roadmap_generee*.pptx)
 - Other PowerPoint files
 
 This directory is ignored by git (see `.gitignore`).
@@ -119,10 +140,11 @@ This directory is ignored by git (see `.gitignore`).
 ## 🔧 Technical Details
 
 - Uses `python-pptx` library for PowerPoint manipulation
-- Uses `pyyaml` for YAML parsing
+- Uses JSON for configuration parsing
 - Dynamic theme positioning based on content
 - Automatic line management for optimal layout
 - Color-coded items based on type and subtype
+- JSON schema validation
 
 ## 📊 Features
 
@@ -130,8 +152,9 @@ This directory is ignored by git (see `.gitignore`).
 - Dynamic positioning of elements
 - Multiple item types (bars, milestones, text)
 - Customizable styling
-- YAML validation tool
+- JSON validation tool
 - Template-based generation
+- Support for multiple roadmap files (roadmap1.json, roadmap2.json, etc.)
 
 ## 🤝 Contributing
 
